@@ -86,6 +86,10 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
+    // Find workspace root by looking for Cargo.toml with [workspace]
+    let workspace_root = find_workspace_root()?;
+    std::env::set_current_dir(&workspace_root)?;
+    
     let cli = Cli::parse();
 
     match cli.command {
@@ -190,4 +194,30 @@ fn update() -> Result<()> {
         "linker/Cargo.toml",
         "plugins/",
     ])
+}
+
+fn find_workspace_root() -> Result<std::path::PathBuf> {
+    
+    
+    let mut current = std::env::current_dir()?;
+    
+    loop {
+        let cargo_toml = current.join("Cargo.toml");
+        
+        if cargo_toml.exists() {
+            // Check if this is a workspace root
+            let content = std::fs::read_to_string(&cargo_toml)?;
+            if content.contains("[workspace]") {
+                return Ok(current);
+            }
+        }
+        
+        // Move up to parent directory
+        if !current.pop() {
+            anyhow::bail!(
+                "Could not find Lunaris workspace root.\n\
+                 lunac must be run from within the Lunaris project directory."
+            );
+        }
+    }
 }

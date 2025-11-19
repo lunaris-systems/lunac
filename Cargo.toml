@@ -1,6 +1,6 @@
 [package]
 name = "lunac"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 edition.workspace = true
 description = "Lunaris compiler - build tool and plugin manager for the Lunaris video editor"

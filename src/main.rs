@@ -18,6 +18,10 @@ enum Commands {
         #[arg(short, long)]
         release: bool,
 
+        /// Build without the runtime (barebones)
+        #[arg(long)]
+        barebones: bool,
+
         /// Additional arguments to pass to cargo
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
@@ -28,6 +32,10 @@ enum Commands {
         /// Run with release optimizations
         #[arg(short, long)]
         release: bool,
+
+        /// Run without the runtime (barebones)
+        #[arg(long)]
+        barebones: bool,
 
         /// Additional arguments to pass to cargo
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -89,12 +97,20 @@ fn main() -> Result<()> {
     // Find workspace root by looking for Cargo.toml with [workspace]
     let workspace_root = find_workspace_root()?;
     std::env::set_current_dir(&workspace_root)?;
-    
+
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Build { release, args } => {
-            let mut cmd_args = vec!["build", "--package", "lunaris_core"];
+        Commands::Build {
+            release,
+            barebones,
+            args,
+        } => {
+            let mut cmd_args = vec!["build", "--package", "lunaris"];
+            if !barebones {
+                cmd_args.push("--features");
+                cmd_args.push("full");
+            }
             if release {
                 cmd_args.push("--release");
             }
@@ -103,9 +119,17 @@ fn main() -> Result<()> {
             cargo(&cmd_args)
         }
 
-        Commands::Run { release, args } => {
+        Commands::Run {
+            release,
+            barebones,
+            args,
+        } => {
             update()?;
-            let mut cmd_args = vec!["run", "--package", "lunaris_core"];
+            let mut cmd_args = vec!["run", "--package", "lunaris"];
+            if !barebones {
+                cmd_args.push("--features");
+                cmd_args.push("full");
+            }
             if release {
                 cmd_args.push("--release");
             }
@@ -115,21 +139,21 @@ fn main() -> Result<()> {
         }
 
         Commands::Check { args } => {
-            let mut cmd_args = vec!["check", "--package", "lunaris_core"];
+            let mut cmd_args = vec!["check", "--package", "lunaris"];
             let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             cmd_args.extend(str_args);
             cargo(&cmd_args)
         }
 
         Commands::Clippy { args } => {
-            let mut cmd_args = vec!["clippy", "--package", "lunaris_core"];
+            let mut cmd_args = vec!["clippy", "--package", "lunaris"];
             let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             cmd_args.extend(str_args);
             cargo(&cmd_args)
         }
 
         Commands::Test { args } => {
-            let mut cmd_args = vec!["test", "--package", "lunaris_core"];
+            let mut cmd_args = vec!["test", "--package", "lunaris"];
             let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
             cmd_args.extend(str_args);
             cargo(&cmd_args)
@@ -191,19 +215,17 @@ fn update() -> Result<()> {
         "-p",
         "linker_updater",
         "--",
-        "linker/Cargo.toml",
+        "crates/linker/Cargo.toml",
         "plugins/",
     ])
 }
 
 fn find_workspace_root() -> Result<std::path::PathBuf> {
-    
-    
     let mut current = std::env::current_dir()?;
-    
+
     loop {
         let cargo_toml = current.join("Cargo.toml");
-        
+
         if cargo_toml.exists() {
             // Check if this is a workspace root
             let content = std::fs::read_to_string(&cargo_toml)?;
@@ -211,7 +233,7 @@ fn find_workspace_root() -> Result<std::path::PathBuf> {
                 return Ok(current);
             }
         }
-        
+
         // Move up to parent directory
         if !current.pop() {
             anyhow::bail!(

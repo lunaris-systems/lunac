@@ -215,7 +215,7 @@ fn update() -> Result<()> {
         "-p",
         "linker_updater",
         "--",
-        "crates/linker/Cargo.toml",
+        "crates/lunaris_linker/Cargo.toml",
         "plugins/",
     ])
 }

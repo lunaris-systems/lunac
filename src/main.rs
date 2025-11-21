@@ -63,8 +63,15 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Update plugin linker
-    Update,
+    /// Update dependencies (cargo update)
+    Update {
+        /// Additional arguments to pass to cargo
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+
+    /// Sync plugin linker
+    Sync,
 
     /// Add a plugin dependency
     Add {
@@ -124,7 +131,7 @@ fn main() -> Result<()> {
             barebones,
             args,
         } => {
-            update()?;
+            sync()?;
             let mut cmd_args = vec!["run", "--package", "lunaris"];
             if !barebones {
                 cmd_args.push("--features");
@@ -159,7 +166,14 @@ fn main() -> Result<()> {
             cargo(&cmd_args)
         }
 
-        Commands::Update => update(),
+        Commands::Update { args } => {
+            let mut cmd_args = vec!["update"];
+            let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+            cmd_args.extend(str_args);
+            cargo(&cmd_args)
+        }
+
+        Commands::Sync => sync(),
 
         Commands::Add { plugin } => {
             println!("Adding plugin: {}", plugin);
@@ -208,7 +222,7 @@ fn cargo(args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-fn update() -> Result<()> {
+fn sync() -> Result<()> {
     cargo(&[
         "run",
         "-q",
